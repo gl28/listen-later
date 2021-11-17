@@ -1,0 +1,15 @@
+<html>
+    <head>
+        <title>Register</title>
+    </head>
+    <body>
+        {{ if . }}
+        <div class="error">{{ . }}</div>
+        {{ end }}
+        <form method="POST">
+            <div>Email: <input name="email" type="text" placeholder="email"></div>
+            <div>Password: <input name="password" type="password" placeholder="password"></div>
+            <input type="submit">
+        </form>
+    </body>
+</html>
