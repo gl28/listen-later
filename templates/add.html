@@ -1,0 +1,15 @@
+<html>
+    <head>
+        <title>Add a New Article</title>
+    </head>
+    <body>
+        <h1>Enter Article URL</h1>
+        {{ if . }}
+        <div class="error">{{ . }}</div>
+        {{ end }}
+        <form method="POST">
+            <input name="url" type="text" placeholder="url">
+            <input type="submit">
+        </form>
+    </body>
+</html>
