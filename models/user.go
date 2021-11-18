@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -14,9 +13,9 @@ var ErrInvalidCredentials error = errors.New("Invalid login credentials")
 var ErrUserAlreadyExists error = errors.New("A user with that email already exists")
 
 type User struct {
-	id int
-	email string
-	key string
+	Id int
+	Email string
+	Key string
 }
 
 func generateKey() string {
@@ -31,7 +30,7 @@ func RegisterNewUser(email, password string) error {
 	if err == nil {
 		return ErrUserAlreadyExists
 	} else if err != nil && err != sql.ErrNoRows {
-		log.Fatal(err)
+		return err
 	}
 	cost := bcrypt.DefaultCost
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), cost)
@@ -40,12 +39,31 @@ func RegisterNewUser(email, password string) error {
 	}
 	stmt, err := db.Prepare("INSERT INTO users (email, key, hash) VALUES ($1, $2, $3)")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	key := generateKey()
 	_, err = stmt.Exec(email, key, hash)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	return nil
+}
+
+func AuthenticateUser(email, password string) (*User, error) {
+	var (
+		id int
+		key string
+		hash string
+	)
+	err := db.QueryRow("SELECT id, key, hash FROM users WHERE email = $1", email).Scan(&id, &key, &hash)
+	if err == sql.ErrNoRows {
+		return nil, ErrInvalidCredentials
+	} else if err != nil {
+		return nil, err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+	return &User{Id: id, Email: email, Key: key}, nil
 }
