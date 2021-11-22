@@ -2,12 +2,16 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gl28/listen-later/apis"
 	"github.com/gl28/listen-later/models"
 	"github.com/gl28/listen-later/sessions"
 	"github.com/gl28/listen-later/utils"
+
+	// remove godotenv and use environment variables for production
+	"github.com/joho/godotenv"
 
 	"github.com/gorilla/mux"
 )
@@ -44,8 +48,8 @@ func loginPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session.Values["user_id"] = user.Id
-	session.Values["email"] = user.Email
-	session.Values["user_key"] = user.Key
+	//session.Values["email"] = user.Email
+	//session.Values["user_key"] = user.Key
 	session.Save(r, w)
 	http.Redirect(w, r, "/", 302)
 }
@@ -79,14 +83,48 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 	// call first AWS API to extract text content and metadata
 	article, err := apis.ExtractContent(url)
 	if err != nil {
+		// TODO
+		// add more helpful error: we weren't able to find an article at that address...
+		// suggestion: try a different URL or check that your URL is correct
+		// render the add article template
+		fmt.Println("err1")
 		internalServerError(w)
 		return
 	}
 
-	// send text to AWS API responsible for converting to audio
-	
+	// user's key and total number of articles saved
+	// is used to name their audio files
+	session, err := sessions.Store.Get(r, "session")
+	userIdUntyped := session.Values["user_id"]
+	userId := userIdUntyped.(int)
+	user, err := models.GetUserById(userId)
+	if err != nil {
+		internalServerError(w)
+		return
+	}
+
+	filename := fmt.Sprintf("%s%d.mp3", user.Key, user.ArticleCount)
+	text := article.Body
+
+	request := &apis.AudioConversionRequest{Text: text, Filename: filename}
+
+	// send text and filename to AWS API responsible for converting to audio
+	err = apis.ConvertToAudio(request)
+	if err != nil {
+		fmt.Println(err)
+		internalServerError(w)
+		return
+	}
+
+	// add stuff to the database
+	err = models.IncrementArticleCount(userId)
+	if err != nil {
+		fmt.Println("err4")
+		internalServerError(w)
+		return
+	}
+
 	w.Write([]byte("Success"))
-	return
 }
 
 func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
@@ -105,6 +143,10 @@ func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	r := mux.NewRouter()
 	r.HandleFunc("/", requireAuthorization(indexGetHandler)).Methods("GET")
 	r.HandleFunc("/login", loginGetHandler).Methods("GET")
