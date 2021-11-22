@@ -9,3 +9,9 @@ type Article struct {
 	OriginalURL string
 	AudioURL string
 }
+
+/*
+func SaveNewArticle(*Article) error {
+	return nil
+}
+*/
