@@ -20,7 +20,6 @@ type APIResponse struct {
 
 type AudioConversionRequest struct {
 	Text string `json:"text"`
-	Filename string `json:"filename"`
 }
 
 
@@ -57,10 +56,12 @@ func ExtractContent(articleUrl string) (*models.Article, error) {
 	json.NewDecoder(resp.Body).Decode(response)
 	json.Unmarshal([]byte(response.Body), article)
 
+	article.OriginalURL = articleUrl
+
 	return article, nil
 }
 
-func ConvertToAudio(request *AudioConversionRequest) error {
+func ConvertToAudio(request *AudioConversionRequest) (string, error) {
 	/* Calls AWS Lambda which:
 		1. Calls Amazon Polly to convert text to audio
 		2. Stores resulting audio in S3 bucket
@@ -70,29 +71,29 @@ func ConvertToAudio(request *AudioConversionRequest) error {
 
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
-		return err
+		return "", err
 	}
 	
 	req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Header.Add("x-api-key", os.Getenv("AWS_API_KEY_2"))
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	response := &APIResponse{}
 	json.NewDecoder(resp.Body).Decode(response)
-	fmt.Println(response)
+	url := response.Body
 
 	if response.StatusCode != "200" {
-		return ErrAudioConversionFailed
+		return "", ErrAudioConversionFailed
 	}
 	
-	return nil
+	return url, nil
 }

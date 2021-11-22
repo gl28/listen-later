@@ -92,37 +92,36 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// user's key and total number of articles saved
-	// is used to name their audio files
+	// will need user ID to save article after request finishes
 	session, err := sessions.Store.Get(r, "session")
 	userIdUntyped := session.Values["user_id"]
 	userId := userIdUntyped.(int)
-	user, err := models.GetUserById(userId)
+	
+	/*user, err := models.GetUserById(userId)
 	if err != nil {
 		internalServerError(w)
 		return
-	}
+	}*/
 
-	filename := fmt.Sprintf("%s%d.mp3", user.Key, user.ArticleCount)
 	text := article.Body
+	request := &apis.AudioConversionRequest{Text: text}
 
-	request := &apis.AudioConversionRequest{Text: text, Filename: filename}
-
-	// send text and filename to AWS API responsible for converting to audio
-	err = apis.ConvertToAudio(request)
+	// send text to AWS API responsible for converting to audio
+	audioUrl, err := apis.ConvertToAudio(request)
 	if err != nil {
-		fmt.Println(err)
 		internalServerError(w)
 		return
 	}
+	article.AudioURL = audioUrl
 
 	// add stuff to the database
-	err = models.IncrementArticleCount(userId)
+	/*err = models.IncrementArticleCount(userId)
 	if err != nil {
-		fmt.Println("err4")
 		internalServerError(w)
 		return
-	}
+	}*/
+
+	err = models.SaveNewArticle(userId, article)
 
 	w.Write([]byte("Success"))
 }
