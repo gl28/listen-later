@@ -82,15 +82,3 @@ func GetUserById(userId int) (*User, error) {
 	}
 	return &User{Id: userId, Email: email, Key: key, ArticleCount: articleCount}, nil
 }
-
-
-/* THIS FUNCTION NOT BEING USED BECAUSE AWS SETS THE AUDIO URL AUTOMATICALLY NOW
-func IncrementArticleCount(userId int) error {
-	stmt, err := db.Prepare("UPDATE users SET article_count = article_count + 1 WHERE id = $1")
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec(userId)
-	return err
-}
-*/

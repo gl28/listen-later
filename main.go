@@ -87,22 +87,18 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 		// add more helpful error: we weren't able to find an article at that address...
 		// suggestion: try a different URL or check that your URL is correct
 		// render the add article template
-		fmt.Println("err1")
 		internalServerError(w)
 		return
 	}
 
 	// will need user ID to save article after request finishes
 	session, err := sessions.Store.Get(r, "session")
-	userIdUntyped := session.Values["user_id"]
-	userId := userIdUntyped.(int)
-	
-	/*user, err := models.GetUserById(userId)
 	if err != nil {
 		internalServerError(w)
 		return
-	}*/
-
+	}
+	userIdUntyped := session.Values["user_id"]
+	userId := userIdUntyped.(int)
 	text := article.Body
 	request := &apis.AudioConversionRequest{Text: text}
 
@@ -114,16 +110,29 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	article.AudioURL = audioUrl
 
-	// add stuff to the database
-	/*err = models.IncrementArticleCount(userId)
-	if err != nil {
-		internalServerError(w)
-		return
-	}*/
-
 	err = models.SaveNewArticle(userId, article)
 
 	w.Write([]byte("Success"))
+}
+
+func listGetHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := sessions.Store.Get(r, "session")
+	if err != nil {
+		internalServerError(w)
+		return
+	}
+	userIdUntyped := session.Values["user_id"]
+	userId := userIdUntyped.(int)
+	articles, err := models.GetArticlesForUser(userId)
+	if err != nil {
+		fmt.Println(err)
+		internalServerError(w)
+		return
+	}
+	fmt.Println("here!")
+	for _, article := range articles {
+		fmt.Println(article)
+	}
 }
 
 func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
@@ -154,6 +163,7 @@ func main() {
 	r.HandleFunc("/register", registerPostHandler).Methods("POST")
 	r.HandleFunc("/add", requireAuthorization(addArticleGetHandler)).Methods("GET")
 	r.HandleFunc("/add", requireAuthorization(addArticlePostHandler)).Methods("POST")
+	r.HandleFunc("/list", requireAuthorization(listGetHandler)).Methods("GET")
 
 	db := models.Init()
 	defer db.Close()
