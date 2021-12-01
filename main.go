@@ -21,6 +21,11 @@ func internalServerError(w http.ResponseWriter) {
 	utils.RunTemplate(w, "internal_server_error.html", nil)
 }
 
+func notFoundError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNotFound)
+	utils.RunTemplate(w, "not_found.html", nil)
+}
+
 func indexGetHandler(w http.ResponseWriter, r *http.Request) {
 	utils.RunTemplate(w, "index.html", nil)
 }
@@ -136,19 +141,24 @@ func listGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func rssGetHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := sessions.Store.Get(r, "session")
+	params := mux.Vars(r)
+	key := params["key"]
+	user, err := models.GetUserByKey(key)
 	if err != nil {
-		internalServerError(w)
+		// most likely url is invalid, so return 404
+		notFoundError(w)
 		return
 	}
-	userIdUntyped := session.Values["user_id"]
-	userId := userIdUntyped.(int)
-	p, err := utils.CreateFeedForUser(userId)
+	p, err := utils.CreateFeedForUser(user.Id)
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(p)
-	w.Write([]byte("check log"))
+	w.Header().Set("Content-Type", "application/xml")
+	if err := p.Encode(w); err != nil {
+		internalServerError(w)
+		return
+	}
 }
 
 func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
@@ -180,7 +190,7 @@ func main() {
 	r.HandleFunc("/add", requireAuthorization(addArticleGetHandler)).Methods("GET")
 	r.HandleFunc("/add", requireAuthorization(addArticlePostHandler)).Methods("POST")
 	r.HandleFunc("/list", requireAuthorization(listGetHandler)).Methods("GET")
-	r.HandleFunc("/rss", requireAuthorization(rssGetHandler)).Methods("GET")
+	r.HandleFunc("/rss/{key}", requireAuthorization(rssGetHandler)).Methods("GET")
 
 	db := models.Init()
 	defer db.Close()

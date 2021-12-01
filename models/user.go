@@ -82,3 +82,13 @@ func GetUserById(userId int) (*User, error) {
 	}
 	return &User{Id: userId, Email: email, Key: key, ArticleCount: articleCount}, nil
 }
+
+func GetUserByKey(key string) (*User, error) {
+	user := User{Key: key}
+	err := db.QueryRow("SELECT email, id, article_count FROM users WHERE key = $1",
+		key).Scan(&user.Email, &user.Id, &user.ArticleCount)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
