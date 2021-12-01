@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Article struct {
 	Title string `json:"title"`
 	Author string `json:"author"`
@@ -8,7 +10,8 @@ type Article struct {
 	PubDate string `json:"date"`
 	OriginalURL string
 	AudioURL string
-	DateAdded string
+	ContentLength int64
+	DateAdded time.Time
 }
 
 func SaveNewArticle(userId int, article *Article) error {
@@ -16,13 +19,20 @@ func SaveNewArticle(userId int, article *Article) error {
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec(userId, article.Title, article.AudioURL, article.OriginalURL, article.Author, article.SiteName, article.PubDate)
+	_, err = stmt.Exec(
+		userId,
+		article.Title,
+		article.AudioURL,
+		article.OriginalURL,
+		article.Author,
+		article.SiteName,
+		article.PubDate)
 	return err
 }
 
 func GetArticlesForUser(userId int) ([]*Article, error) {
 	query := `
-	SELECT title, audio_url, original_url, author, sitename, pub_date, created_at
+	SELECT title, audio_url, original_url, author, sitename, pub_date, created_at, content_length
 	FROM articles
 	WHERE user_id = $1
 	ORDER BY created_at DESC;
@@ -36,7 +46,15 @@ func GetArticlesForUser(userId int) ([]*Article, error) {
 	var articles []*Article
 	for rows.Next() {
 		article := &Article{}
-		err := rows.Scan(&article.Title, &article.AudioURL, &article.OriginalURL, &article.Author, &article.SiteName, &article.PubDate, &article.DateAdded)
+		err := rows.Scan(
+			&article.Title,
+			&article.AudioURL,
+			&article.OriginalURL,
+			&article.Author,
+			&article.SiteName,
+			&article.PubDate,
+			&article.DateAdded,
+			&article.ContentLength)
 		if err != nil {
 			return nil, err
 		}

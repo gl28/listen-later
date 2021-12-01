@@ -135,6 +135,22 @@ func listGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func rssGetHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := sessions.Store.Get(r, "session")
+	if err != nil {
+		internalServerError(w)
+		return
+	}
+	userIdUntyped := session.Values["user_id"]
+	userId := userIdUntyped.(int)
+	p, err := utils.CreateFeedForUser(userId)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(p)
+	w.Write([]byte("check log"))
+}
+
 func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, err := sessions.Store.Get(r, "session")
@@ -164,6 +180,7 @@ func main() {
 	r.HandleFunc("/add", requireAuthorization(addArticleGetHandler)).Methods("GET")
 	r.HandleFunc("/add", requireAuthorization(addArticlePostHandler)).Methods("POST")
 	r.HandleFunc("/list", requireAuthorization(listGetHandler)).Methods("GET")
+	r.HandleFunc("/rss", requireAuthorization(rssGetHandler)).Methods("GET")
 
 	db := models.Init()
 	defer db.Close()

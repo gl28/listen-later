@@ -13,4 +13,8 @@ require (
 	github.com/lib/pq v1.10.4
 )
 
-require github.com/joho/godotenv v1.4.0 // indirect
+require (
+	github.com/eduncan911/podcast v1.4.2 // indirect
+	github.com/joho/godotenv v1.4.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+)
