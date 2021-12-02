@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gl28/listen-later/apis"
 	"github.com/gl28/listen-later/models"
@@ -199,5 +200,9 @@ func main() {
 
 	http.Handle("/", r)
 	fmt.Println("Now serving on localhost:8000...")
-	http.ListenAndServe(":8000", nil)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = ":8000"
+	}
+	http.ListenAndServe(port, nil)
 }
