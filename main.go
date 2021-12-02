@@ -193,7 +193,7 @@ func main() {
 
 	http.Handle("/", r)
 	fmt.Println("Now serving on localhost:8000...")
-	port := os.Getenv("PORT")
+	port := fmt.Sprintf(":%s", os.Getenv("PORT"))
 	if port == "" {
 		port = ":8000"
 	}
