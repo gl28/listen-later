@@ -7,6 +7,10 @@ import (
 
 var templates *template.Template
 
+type IndexContent struct {
+	FeedURL string
+}
+
 func LoadTemplates(pattern string) {
 	templates = template.Must(template.ParseGlob(pattern))
 }

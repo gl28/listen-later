@@ -14,9 +14,22 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func internalServerError(w http.ResponseWriter) {
+const rootURL string = "https://morning-anchorage-08007.herokuapp.com/"
+
+func getUserIdFromSession(r *http.Request) (int, error) {
+	session, err := sessions.Store.Get(r, "session")
+	if err != nil {
+		return 0, err
+	}
+	userIdUntyped := session.Values["user_id"]
+	userId := userIdUntyped.(int)
+	return userId, nil
+}
+
+func internalServerError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 	utils.RunTemplate(w, "internal_server_error.html", nil)
+	log.Fatal(err)
 }
 
 func notFoundError(w http.ResponseWriter) {
@@ -25,7 +38,19 @@ func notFoundError(w http.ResponseWriter) {
 }
 
 func indexGetHandler(w http.ResponseWriter, r *http.Request) {
-	utils.RunTemplate(w, "index.html", nil)
+	userId, err := getUserIdFromSession(r)
+	if err != nil {
+		internalServerError(w, err)
+		return
+	}
+	user, err := models.GetUserById(userId)
+	if err != nil {
+		internalServerError(w, err)
+		return
+	}
+	feedURL := fmt.Sprintf("%srss/%s", rootURL, user.Key)
+	indexContent := utils.IndexContent{FeedURL: feedURL}
+	utils.RunTemplate(w, "index.html", indexContent)
 }
 
 func loginGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -41,13 +66,12 @@ func loginPostHandler(w http.ResponseWriter, r *http.Request) {
 		utils.RunTemplate(w, "login.html", "Invalid username or password.")
 		return
 	} else if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 	session, err := sessions.Store.Get(r, "session")
 	if err != nil {
-		fmt.Println(err)
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 	session.Values["user_id"] = user.Id
@@ -69,7 +93,7 @@ func registerPostHandler(w http.ResponseWriter, r *http.Request) {
 	if err == models.ErrUserAlreadyExists {
 		utils.RunTemplate(w, "register.html", "A user with that email already exists.")
 	} else if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 	http.Redirect(w, r, "/", 302)
@@ -90,25 +114,23 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 		// add more helpful error: we weren't able to find an article at that address...
 		// suggestion: try a different URL or check that your URL is correct
 		// render the add article template
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	// will need user ID to save article after request finishes
-	session, err := sessions.Store.Get(r, "session")
+	userId, err := getUserIdFromSession(r)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
-	userIdUntyped := session.Values["user_id"]
-	userId := userIdUntyped.(int)
 	text := article.Body
 	request := &apis.AudioConversionRequest{Text: text}
 
 	// send text to AWS API responsible for converting to audio
 	audioUrl, err := apis.ConvertToAudio(request)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 	article.AudioURL = audioUrl
@@ -119,17 +141,16 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listGetHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := sessions.Store.Get(r, "session")
+	userId, err := getUserIdFromSession(r)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
+		log.Fatal(err)
 		return
 	}
-	userIdUntyped := session.Values["user_id"]
-	userId := userIdUntyped.(int)
 	articles, err := models.GetArticlesForUser(userId)
 	if err != nil {
 		fmt.Println(err)
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 	fmt.Println("here!")
@@ -154,7 +175,7 @@ func rssGetHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(p)
 	w.Header().Set("Content-Type", "application/xml")
 	if err := p.Encode(w); err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 }
@@ -163,7 +184,7 @@ func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, err := sessions.Store.Get(r, "session")
 		if err != nil {
-			internalServerError(w)
+			internalServerError(w, err)
 			return
 		}
 		_, ok := session.Values["user_id"]
