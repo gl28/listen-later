@@ -184,7 +184,7 @@ func main() {
 	r.HandleFunc("/add", requireAuthorization(addArticleGetHandler)).Methods("GET")
 	r.HandleFunc("/add", requireAuthorization(addArticlePostHandler)).Methods("POST")
 	r.HandleFunc("/list", requireAuthorization(listGetHandler)).Methods("GET")
-	r.HandleFunc("/rss/{key}", requireAuthorization(rssGetHandler)).Methods("GET")
+	r.HandleFunc("/rss/{key}", rssGetHandler).Methods("GET")
 
 	db := models.Init()
 	defer db.Close()
