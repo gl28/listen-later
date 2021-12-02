@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gl28/listen-later/models"
-	"github.com/joho/godotenv"
 )
 
 type APIResponse struct {
@@ -21,10 +20,6 @@ type APIResponse struct {
 type AudioConversionRequest struct {
 	Text string `json:"text"`
 }
-
-
-// REMOVE GOTODOTENV FOR PRODUCTION
-var err error = godotenv.Load()
 
 var client = &http.Client{Timeout: 10 * time.Second}
 var ErrAudioConversionFailed error = errors.New("Server responded, but audio conversion failed.")

@@ -4,10 +4,7 @@ import (
 	"os"
 
 	"github.com/gorilla/sessions"
-	"github.com/joho/godotenv"
 )
 
-// REMOVE GOTODOTENV FOR PRODUCTION
-var err error = godotenv.Load()
 
-var Store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
+var Store = sessions.NewCookieStore([]byte(os.Getenv("LISTEN_LATER_SESSION_KEY")))

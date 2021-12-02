@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -10,9 +9,6 @@ import (
 	"github.com/gl28/listen-later/models"
 	"github.com/gl28/listen-later/sessions"
 	"github.com/gl28/listen-later/utils"
-
-	// remove godotenv and use environment variables for production
-	"github.com/joho/godotenv"
 
 	"github.com/gorilla/mux"
 )
@@ -178,10 +174,6 @@ func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
 	r := mux.NewRouter()
 	r.HandleFunc("/", requireAuthorization(indexGetHandler)).Methods("GET")
 	r.HandleFunc("/login", loginGetHandler).Methods("GET")
