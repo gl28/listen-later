@@ -49,7 +49,12 @@ func indexGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	feedURL := fmt.Sprintf("%srss/%s", rootURL, user.Key)
-	indexContent := utils.IndexContent{FeedURL: feedURL}
+	articles, err := models.GetArticlesForUser(userId)
+	if err !=  nil {
+		internalServerError(w, err)
+		return
+	}
+	indexContent := utils.IndexContent{FeedURL: feedURL, Articles: articles}
 	utils.RunTemplate(w, "index.html", indexContent)
 }
 
@@ -75,8 +80,6 @@ func loginPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session.Values["user_id"] = user.Id
-	//session.Values["email"] = user.Email
-	//session.Values["user_key"] = user.Key
 	session.Save(r, w)
 	http.Redirect(w, r, "/", 302)
 }
@@ -99,13 +102,9 @@ func registerPostHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", 302)
 }
 
-func addArticleGetHandler(w http.ResponseWriter, r *http.Request) {
-	utils.RunTemplate(w, "add.html", nil)
-}
-
 func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	url := r.PostForm.Get("url")
+	url := r.PostForm.Get("articleURL")
 
 	// call first AWS API to extract text content and metadata
 	article, err := apis.ExtractContent(url)
@@ -137,26 +136,7 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = models.SaveNewArticle(userId, article)
 
-	w.Write([]byte("Success"))
-}
-
-func listGetHandler(w http.ResponseWriter, r *http.Request) {
-	userId, err := getUserIdFromSession(r)
-	if err != nil {
-		internalServerError(w, err)
-		log.Fatal(err)
-		return
-	}
-	articles, err := models.GetArticlesForUser(userId)
-	if err != nil {
-		fmt.Println(err)
-		internalServerError(w, err)
-		return
-	}
-	fmt.Println("here!")
-	for _, article := range articles {
-		fmt.Println(article)
-	}
+	http.Redirect(w, r, "/?status=success", 303)
 }
 
 func rssGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -170,9 +150,8 @@ func rssGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := utils.CreateFeedForUser(user.Id)
 	if err != nil {
-		fmt.Println(err)
+		internalServerError(w, err)
 	}
-	fmt.Println(p)
 	w.Header().Set("Content-Type", "application/xml")
 	if err := p.Encode(w); err != nil {
 		internalServerError(w, err)
@@ -202,9 +181,7 @@ func main() {
 	r.HandleFunc("/login", loginPostHandler).Methods("POST")
 	r.HandleFunc("/register", registerGetHandler).Methods("GET")
 	r.HandleFunc("/register", registerPostHandler).Methods("POST")
-	r.HandleFunc("/add", requireAuthorization(addArticleGetHandler)).Methods("GET")
 	r.HandleFunc("/add", requireAuthorization(addArticlePostHandler)).Methods("POST")
-	r.HandleFunc("/list", requireAuthorization(listGetHandler)).Methods("GET")
 	r.HandleFunc("/rss/{key}", rssGetHandler).Methods("GET")
 
 	db := models.Init()
