@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 type Article struct {
 	Title string `json:"title"`
@@ -47,19 +50,30 @@ func GetArticlesForUser(userId int) ([]*Article, error) {
 	var articles []*Article
 	for rows.Next() {
 		article := &Article{}
+
+		// author, sitename, and pubdate can be null, so we can't
+		// scan these directly into strings
+		var (
+			author sql.NullString
+			siteName sql.NullString
+			pubDate sql.NullString
+		)
 		err := rows.Scan(
 			&article.Title,
 			&article.AudioURL,
 			&article.OriginalURL,
-			&article.Author,
-			&article.SiteName,
-			&article.PubDate,
+			&author,
+			&siteName,
+			&pubDate,
 			&article.DateAdded,
 			&article.ContentLength,
 			&article.ID)
 		if err != nil {
 			return nil, err
 		}
+		article.Author = author.String
+		article.SiteName = siteName.String
+		article.PubDate = pubDate.String
 		articles = append(articles, article)
 	}
 	err = rows.Err()
