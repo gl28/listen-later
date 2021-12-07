@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 )
 
 const rootURL string = "https://listen-l8r.herokuapp.com/"
+var ErrUserNotLoggedIn error = errors.New("Could not get user ID from session because user is not logged in.")
 
 func getUserIdFromSession(r *http.Request) (int, error) {
 	session, err := sessions.Store.Get(r, "session")
@@ -22,8 +24,11 @@ func getUserIdFromSession(r *http.Request) (int, error) {
 		return 0, err
 	}
 	userIdUntyped := session.Values["user_id"]
-	userId := userIdUntyped.(int)
-	return userId, nil
+	if userIdUntyped != nil {
+		userId := userIdUntyped.(int)
+		return userId, nil
+	}
+	return -1, ErrUserNotLoggedIn
 }
 
 func internalServerError(w http.ResponseWriter, err error) {
@@ -176,6 +181,7 @@ func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
 		_, ok := session.Values["user_id"]
 		if !ok {
 			http.Redirect(w, r, "/login", 302)
+			return
 		}
 		handler.ServeHTTP(w, r)
 	}
