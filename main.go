@@ -14,7 +14,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const rootURL string = "https://morning-anchorage-08007.herokuapp.com/"
+const rootURL string = "https://listen-l8r.herokuapp.com/"
 
 func getUserIdFromSession(r *http.Request) (int, error) {
 	session, err := sessions.Store.Get(r, "session")
@@ -134,6 +134,13 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	article.AudioURL = audioUrl
 
+	// if it has no title, set the title to the original URL.
+	// some values can be null, but each article must have a
+	// title for the RSS feed
+	if article.Title == "" {
+		article.Title = article.OriginalURL
+	}
+
 	err = models.SaveNewArticle(userId, article)
 
 	http.Redirect(w, r, "/?status=success", 303)
@@ -190,11 +197,10 @@ func main() {
 	utils.LoadTemplates("templates/*.html")
 
 	http.Handle("/", r)
-	fmt.Println("Now serving on localhost:8000...")
 	port := fmt.Sprintf(":%s", os.Getenv("PORT"))
 	if port == "" {
 		port = ":8000"
 	}
-	fmt.Println("the port is:", port)
+	fmt.Println("Serving on port", port)
 	log.Fatal(http.ListenAndServe(port, nil))
 }
