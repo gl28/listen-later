@@ -22,9 +22,8 @@ func getUserIdFromSession(r *http.Request) (int, error) {
 		return 0, err
 	}
 	userIdUntyped := session.Values["user_id"]
-	fmt.Println("userIdUntyped", userIdUntyped)
+
 	if userIdUntyped != nil {
-		fmt.Println("converting userid to int")
 		userId := userIdUntyped.(int)
 		return userId, nil
 	}
@@ -43,9 +42,7 @@ func notFoundError(w http.ResponseWriter) {
 }
 
 func indexGetHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("calling the index handler")
 	userId, err := getUserIdFromSession(r)
-	fmt.Println("useridsession err = ", err)
 	if err != nil {
 		internalServerError(w, err)
 		return
@@ -66,7 +63,6 @@ func indexGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginGetHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("calling the login handler")
 	utils.RunTemplate(w, "login.html", nil)
 }
 
@@ -181,14 +177,12 @@ func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
 			internalServerError(w, err)
 			return
 		}
-		userId, ok := session.Values["user_id"]
-		fmt.Println("require auth userid:", userId)
+		_, ok := session.Values["user_id"]
+
 		if !ok {
-			fmt.Println("redirecting!")
 			http.Redirect(w, r, "/login", 302)
 			return
 		}
-		fmt.Println("not redirectin from auth required")
 		handler.ServeHTTP(w, r)
 	}
 }
