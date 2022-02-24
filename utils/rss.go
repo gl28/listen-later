@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -17,10 +18,14 @@ type headResponse struct {
 }
 
 func CreateFeedForUser(userId int) (*podcast.Podcast, error) {
+
+	// get all of user's saved articles from db to add to feed
 	articles, err := models.GetArticlesForUser(userId)
 	if err != nil {
 		return nil, err
 	}
+
+	// need user struct to add user's email to feed
 	user, err := models.GetUserById(userId)
 	if err != nil {
 		return nil, err
@@ -59,8 +64,19 @@ func CreateFeedForUser(userId int) (*podcast.Podcast, error) {
 
 		contentLength := article.ContentLength
 		
+		/* 
+			The podcast feed format requires us to include the audio file's length
+			in bytes. But the files can take a while to create, so we don't always
+			know the length when their info is first added to the database.
+
+			When a user requests their RSS feed we check each audio file's
+			contentLength. If contentLength == 0, then we know it hasn't been updated
+			yet.
+
+			So we do a HEAD request and save that info in the database for next
+			time.
+		*/
 		if contentLength == 0 {
-			fmt.Println("it was zero")
 			// do a HEAD request to get the audio file's length in bytes
 			req, err := http.NewRequest("HEAD", article.AudioURL, nil)
 			if err != nil {
@@ -81,9 +97,12 @@ func CreateFeedForUser(userId int) (*podcast.Podcast, error) {
 					return nil, err
 				}
 			} else {
-				// if the HEAD request failed, there is likely a permissions issue
-				// so skip this item
-				continue
+				/*
+					If the HEAD request failed, there is likely an S3 permissions issue.
+					So skip this item, but log URL for which request failed.
+					Continue with other items, because they might not have permissions issues.
+				*/
+				log.Printf("HEAD request failed when trying to determine content length for: %s", article.AudioURL)
 			}
 
 		}

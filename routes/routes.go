@@ -113,10 +113,6 @@ func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
 	// call first AWS API to extract text content and metadata
 	article, err := apis.ExtractContent(url)
 	if err != nil {
-		// TODO
-		// add more helpful error: we weren't able to find an article at that address...
-		// suggestion: try a different URL or check that your URL is correct
-		// render the add article template
 		internalServerError(w, err)
 		return
 	}
