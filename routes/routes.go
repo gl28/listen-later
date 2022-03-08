@@ -8,27 +8,12 @@ import (
 
 	"github.com/gl28/listen-later/apis"
 	"github.com/gl28/listen-later/models"
-	"github.com/gl28/listen-later/sessions"
 	"github.com/gl28/listen-later/utils"
 	"github.com/gorilla/mux"
 )
 
 const rootURL string = "https://listen-l8r.herokuapp.com/"
 var ErrUserNotLoggedIn error = errors.New("Could not get user ID from session because user is not logged in.")
-
-func getUserIdFromSession(r *http.Request) (int, error) {
-	session, err := sessions.Store.Get(r, "session")
-	if err != nil {
-		return 0, err
-	}
-	userIdUntyped := session.Values["user_id"]
-
-	if userIdUntyped != nil {
-		userId := userIdUntyped.(int)
-		return userId, nil
-	}
-	return -1, ErrUserNotLoggedIn
-}
 
 func internalServerError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
@@ -60,50 +45,6 @@ func indexGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	indexContent := utils.IndexContent{FeedURL: feedURL, Articles: articles}
 	utils.RunTemplate(w, "index.html", indexContent)
-}
-
-func loginGetHandler(w http.ResponseWriter, r *http.Request) {
-	utils.RunTemplate(w, "login.html", nil)
-}
-
-func loginPostHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	email := r.PostForm.Get("email")
-	password := r.PostForm.Get("password")
-	user, err := models.AuthenticateUser(email, password)
-	if err == models.ErrInvalidCredentials {
-		utils.RunTemplate(w, "login.html", "Invalid username or password.")
-		return
-	} else if err != nil {
-		internalServerError(w, err)
-		return
-	}
-	session, err := sessions.Store.Get(r, "session")
-	if err != nil {
-		internalServerError(w, err)
-		return
-	}
-	session.Values["user_id"] = user.Id
-	session.Save(r, w)
-	http.Redirect(w, r, "/", 302)
-}
-
-func registerGetHandler(w http.ResponseWriter, r *http.Request) {
-	utils.RunTemplate(w, "register.html", nil)
-}
-
-func registerPostHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	email := r.PostForm.Get("email")
-	password := r.PostForm.Get("password")
-	err := models.RegisterNewUser(email, password)
-	if err == models.ErrUserAlreadyExists {
-		utils.RunTemplate(w, "register.html", "A user with that email already exists.")
-	} else if err != nil {
-		internalServerError(w, err)
-		return
-	}
-	http.Redirect(w, r, "/", 302)
 }
 
 func addArticlePostHandler(w http.ResponseWriter, r *http.Request) {
@@ -163,23 +104,6 @@ func rssGetHandler(w http.ResponseWriter, r *http.Request) {
 	if err := p.Encode(w); err != nil {
 		internalServerError(w, err)
 		return
-	}
-}
-
-func requireAuthorization(handler http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session, err := sessions.Store.Get(r, "session")
-		if err != nil {
-			internalServerError(w, err)
-			return
-		}
-		_, ok := session.Values["user_id"]
-
-		if !ok {
-			http.Redirect(w, r, "/login", 302)
-			return
-		}
-		handler.ServeHTTP(w, r)
 	}
 }
 
