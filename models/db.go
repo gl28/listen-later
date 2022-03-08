@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"log"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -10,12 +9,10 @@ import (
 
 var db *sql.DB
 
-func Init() *sql.DB {
+func Init() (*sql.DB, error) {
 	connStr := os.Getenv("LISTEN_LATER_DB")
 	var err error
 	db, err = sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return db
+	
+	return db, err
 }

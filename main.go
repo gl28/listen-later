@@ -14,7 +14,10 @@ import (
 func main() {
 	r := routes.Init()
 
-	db := models.Init()
+	db, err := models.Init()
+	if err != nil {
+		log.Fatalf("DB Init() failed with error: %s", err)
+	}
 	defer db.Close()
 
 	utils.LoadTemplates("templates/*.html")
